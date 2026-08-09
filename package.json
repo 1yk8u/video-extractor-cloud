@@ -1,0 +1,17 @@
+{
+  "name": "video-extractor-cloud",
+  "version": "1.0.0",
+  "description": "抖音/快手/B站/小红书 无水印视频提取云服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "vercel": "^58.9.0"
+  }
+}
