@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: video-extractor
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
