@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>视频提取 - 无水印下载</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="视频提取">
+<meta name="theme-color" content="#050505">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#050505;--card:rgba(255,255,255,0.06);--card-strong:rgba(255,255,255,0.1);--border:rgba(255,255,255,0.12);--t1:rgba(255,255,255,0.95);--t2:rgba(255,255,255,0.55);--t3:rgba(255,255,255,0.35);--blue:#0a84ff;--green:#30d158;--red:#ff3b30;--orange:#ff9500;--purple:#bf5af2;--douyin:#fe2c55;--kuaishou:#ff7a00;--bili:#00a1d6;--xhs:#ff2442}
+html,body{width:100%;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue","PingFang SC","Noto Sans CJK SC",sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{padding:max(env(safe-area-inset-top),12px) 16px max(env(safe-area-inset-bottom),20px);display:flex;flex-direction:column;align-items:center;min-height:100vh}
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ambient::before{content:'';position:absolute;width:300px;height:300px;top:-100px;right:-80px;border-radius:50%;background:radial-gradient(circle,rgba(254,44,85,0.08),transparent 70%)}
+.ambient::after{content:'';position:absolute;width:350px;height:350px;bottom:-100px;left:-100px;border-radius:50%;background:radial-gradient(circle,rgba(10,132,255,0.06),transparent 70%)}
+.container{position:relative;z-index:1;width:100%;max-width:440px;display:flex;flex-direction:column;gap:16px;flex:1}
+.header{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 4px}
+.header .brand{display:flex;align-items:center;gap:10px}
+.header .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.header h1{font-size:18px;font-weight:700;letter-spacing:-0.3px}
+.header .sub{font-size:10px;color:var(--t3);margin-top:1px}
+.header .status{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green)}
+.header .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.input-area{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:18px;padding:14px}
+.input-wrap{display:flex;gap:10px;align-items:flex-start}
+.input-field{flex:1;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:15px;color:var(--t1);font-family:inherit;resize:none;min-height:46px;max-height:100px;line-height:1.4;transition:border-color 0.2s}
+.input-field:focus{outline:none;border-color:var(--blue)}
+.input-field::placeholder{color:var(--t3)}
+.extract-btn{background:var(--blue);color:#fff;border:none;border-radius:12px;padding:0 20px;height:46px;font-size:15px;font-weight:600;cursor:pointer;transition:transform 0.15s,opacity 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.extract-btn:active{transform:scale(0.96)}
+.extract-btn:disabled{opacity:0.5;cursor:not-allowed}
+.platforms{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.plat{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--border);background:rgba(255,255,255,0.03)}
+.plat .ico{width:14px;height:14px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;font-weight:700}
+.plat-douyin .ico{background:var(--douyin)}.plat-kuaishou .ico{background:var(--kuaishou)}.plat-bili .ico{background:var(--bili)}.plat-xhs .ico{background:var(--xhs)}
+.loading{display:none;flex-direction:column;align-items:center;gap:12px;padding:40px 20px}
+.loading.show{display:flex}
+.spinner{width:28px;height:28px;border:2.5px solid rgba(255,255,255,0.1);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--t2)}
+.result{display:none;animation:fadeUp 0.4s ease}.result.show{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.result-card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+.result-thumb{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden}
+.result-thumb img{width:100%;height:100%;object-fit:cover}
+.result-thumb .play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,0.5);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.3);cursor:pointer}
+.result-thumb .play-icon::after{content:'';width:0;height:0;border-style:solid;border-width:10px 0 10px 16px;border-color:transparent transparent transparent #fff;margin-left:3px}
+.result-thumb .dur{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.result-thumb .plat-badge{position:absolute;top:8px;left:8px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;color:#fff}
+.result-body{padding:14px}
+.result-title{font-size:15px;font-weight:600;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.result-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--t2);margin-bottom:12px}
+.result-meta span{display:flex;align-items:center;gap:3px}
+.result-actions{display:flex;gap:8px}
+.btn{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;cursor:pointer;border:none;transition:transform 0.15s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-secondary{background:rgba(255,255,255,0.08);color:var(--t1);border:1px solid var(--border)}
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.img-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#111}
+.video-player{width:100%;aspect-ratio:16/9;background:#000;overflow:hidden}
+.video-player video{width:100%;height:100%;object-fit:contain}
+.error{display:none;background:rgba(255,59,48,0.08);border:1px solid rgba(255,59,48,0.2);border-radius:14px;padding:16px;text-align:center}
+.error.show{display:block}
+.error h3{font-size:14px;font-weight:600;color:var(--red);margin-bottom:4px}
+.error p{font-size:13px;color:var(--t2)}
+.history{margin-top:8px}
+.history-title{font-size:12px;color:var(--t3);margin-bottom:8px;padding:0 4px}
+.history-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background 0.2s}
+.history-item:active{background:var(--card-strong)}
+.history-thumb{width:48px;height:48px;border-radius:10px;object-fit:cover;background:#111;flex-shrink:0}
+.history-info{flex:1;min-width:0}
+.history-info .t{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-info .p{font-size:11px;color:var(--t3);margin-top:2px}
+.footer{text-align:center;padding:16px 0 8px;font-size:11px;color:var(--t3)}
+</style>
+</head>
+<body>
+<div class="ambient"></div>
+<div class="container">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">⬇</div>
+      <div><h1>视频提取</h1><div class="sub">无水印 · 免登录 · 免费</div></div>
+    </div>
+    <div class="status"><div class="dot"></div><span>就绪</span></div>
+  </div>
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea class="input-field" id="linkInput" placeholder="粘贴抖音/快手/B站/小红书链接" rows="1"></textarea>
+      <button class="extract-btn" id="extractBtn" onclick="doExtract()">提取</button>
+    </div>
+    <div class="platforms">
+      <div class="plat plat-douyin"><div class="ico">D</div>抖音</div>
+      <div class="plat plat-kuaishou"><div class="ico">K</div>快手</div>
+      <div class="plat plat-bili"><div class="ico">B</div>B站</div>
+      <div class="plat plat-xhs"><div class="ico">X</div>小红书</div>
+    </div>
+  </div>
+  <div class="loading" id="loading"><div class="spinner"></div><div class="loading-text" id="loadingText">正在解析...</div></div>
+  <div class="result" id="result"></div>
+  <div class="error" id="error"><h3>提取失败</h3><p id="errorMsg"></p></div>
+  <div class="history" id="history" style="display:none"><div class="history-title">最近提取</div><div id="historyList"></div></div>
+  <div class="footer">粘贴链接即可自动识别平台 · 点击播放预览 · 长按下载保存</div>
+</div>
+<script>
+// ===== CORS 代理 =====
+const PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u)
+];
+let proxyIdx = 0;
+function proxyUrl(u) { return PROXIES[proxyIdx](u); }
+function mediaProxy(u) { return 'https://corsproxy.io/?url=' + encodeURIComponent(u); }
+
+async function corsFetch(url) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    const idx = (proxyIdx + i) % PROXIES.length;
+    try {
+      const resp = await fetch(PROXIES[idx](url), { redirect: 'follow' });
+      if (resp.ok) { proxyIdx = idx; return resp; }
+    } catch (e) {}
+  }
+  throw new Error('网络请求失败');
+}
+
+async function corsFetchText(url) {
+  const resp = await corsFetch(url);
+  return await resp.text();
+}
+
+async function corsFetchJson(url) {
+  const resp = await corsFetch(url);
+  return await resp.json();
+}
+
+// 获取重定向后的最终URL和内容
+async function corsFetchWithRedirect(url) {
+  try {
+    const resp = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
+    const data = await resp.json();
+    return { url: data.status.url, text: data.contents };
+  } catch (e) {
+    const text = await corsFetchText(url);
+    return { url: url, text: text };
+  }
+}
+
+// ===== 工具函数 =====
+function extractUrl(text) {
+  if (!text) return null;
+  const m = text.match(/https?:\/\/[^\s，。、！？\]）)]+/);
+  if (m) return m[0];
+  const s = text.match(/(v\.douyin\.com|b23\.tv|xhslink\.com|v\.kuaishou\.com)\/[^\s，。、！？\]）)]*/);
+  if (s) return 'https://' + s[0];
+  return text.trim();
+}
+function detectPlatform(url) {
+  if (url.match(/douyin|iesdouyin|v\.douyin\.com|amemv|snssdk/)) return 'douyin';
+  if (url.match(/kuaishou|gifshow|chenzhongtech|yximgs|v\.kuaishou\.com/)) return 'kuaishou';
+  if (url.match(/bilibili|b23\.tv|bilivideo/)) return 'bilibili';
+  if (url.match(/xiaohongshu|xhslink|xhscdn|rednote/)) return 'xiaohongshu';
+  return 'unknown';
+}
+function formatDuration(s) {
+  if (!s || s === 0) return '0:00';
+  const sec = Math.floor(s), m = Math.floor(sec / 60), ss = sec % 60;
+  return m + ':' + String(ss).padStart(2, '0');
+}
+
+// ===== 抖音提取 =====
+async function extractDouyin(link) {
+  const url = extractUrl(link);
+  let videoId = null;
+  if (url && url.includes('v.douyin.com')) {
+    const { url: finalUrl } = await corsFetchWithRedirect(url);
+    const match = finalUrl.match(/\/(video|note)\/(\d+)/);
+    if (match) videoId = match[2];
+  } else if (url) {
+    const match = url.match(/\/(video|note)\/(\d+)/);
+    if (match) videoId = match[2];
+    if (!videoId) { const m2 = url.match(/\/(\d{15,})/); if (m2) videoId = m2[1]; }
+  }
+  if (!videoId) return { success: false, error: '无法提取抖音视频ID' };
+  const shareUrl = 'https://www.iesdouyin.com/share/video/' + videoId + '/';
+  const html = await corsFetchText(shareUrl);
+  const routerMatch = html.match(/_ROUTER_DATA\s*=\s*(\{[\s\S]*?\})\s*<\/script>/);
+  if (!routerMatch) return { success: false, error: '无法解析抖音页面数据' };
+  let routerData;
+  try { routerData = JSON.parse(routerMatch[1].replace(/;\s*$/, '')); } catch (e) { return { success: false, error: '解析数据失败' }; }
+  const pageData = routerData.loaderData && routerData.loaderData['video_(id)/page'];
+  if (!pageData || !pageData.videoInfoRes) return { success: false, error: '未找到视频信息' };
+  const itemList = pageData.videoInfoRes.item_list;
+  if (!itemList || itemList.length === 0) return { success: false, error: '视频不存在或已删除' };
+  const item = itemList[0];
+  const result = { success: true, platform: '抖音', title: item.desc || '抖音视频', author: (item.author && item.author.nickname) || '', watermark: '无水印' };
+  if (item.video && item.video.play_addr) {
+    result.type = 'video';
+    result.duration = item.video.duration ? item.video.duration / 1000 : 0;
+    result.durationStr = formatDuration(result.duration);
+    result.resolution = (item.video.width||0) + 'x' + (item.video.height||0);
+    if (item.video.cover && item.video.cover.url_list) result.thumbnail = item.video.cover.url_list[0];
+    if (item.video.play_addr.uri) result.videoUrl = 'https://www.douyin.com/aweme/v1/play/?video_id=' + item.video.play_addr.uri + '&ratio=1080p&line=0';
+    if (!result.videoUrl && item.video.play_addr.url_list && item.video.play_addr.url_list.length > 0) result.videoUrl = item.video.play_addr.url_list[0].replace('playwm', 'play');
+    if (!result.videoUrl && item.video.bit_rate && item.video.bit_rate.length > 0) {
+      const br = item.video.bit_rate[item.video.bit_rate.length - 1];
+      if (br.play_addr && br.play_addr.url_list && br.play_addr.url_list.length > 0) result.videoUrl = br.play_addr.url_list[0].replace('playwm', 'play');
+    }
+  }
+  if (item.images && item.images.length > 0) {
+    result.type = 'images';
+    result.images = item.images.map(img => img.url_list && img.url_list.length > 0 ? img.url_list[0] : null).filter(Boolean);
+  }
+  if (!result.videoUrl && !result.images) return { success: false, error: '无法提取视频内容' };
+  return result;
+}
+
+// ===== 快手提取 =====
+async function extractKuaishou(link) {
+  const url = extractUrl(link);
+  const { url: finalUrl, text: html } = await corsFetchWithRedirect(url);
+  let videoUrl = null, title = null, thumbnail = null;
+  const patterns = [
+    /"srcNoMark"\s*:\s*"([^"]+)"/, /"photoUrl"\s*:\s*"([^"]+)"/,
+    /"manifestH265"\s*:\s*"([^"]+)"/, /"manifest"\s*:\s*"([^"]+)"/,
+    /"url"\s*:\s*"(https?:\/\/[^"]*\.mp4[^"]*)"/, /"photoH265Url"\s*:\s*"([^"]+)"/
+  ];
+  for (const p of patterns) { const m = html.match(p); if (m) { videoUrl = m[1].replace(/\\u002F/g,'/').replace(/\\\//g,'/'); break; } }
+  if (!videoUrl) {
+    const sm = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\})\s*;\s*<\/script>/);
+    if (sm) { try { const sd = JSON.parse(sm[1]); const pd = sd?.vision?.photo; if (pd?.photoUrl) videoUrl = pd.photoUrl; else if (pd?.mainMvUrls?.length>0) videoUrl = pd.mainMvUrls[0].url; } catch(e){} }
+  }
+  const cm = html.match(/"caption"\s*:\s*"([^"]*)"/);
+  if (cm) title = cm[1]; else if (html.match(/<title>([^<]+)<\/title>/)) title = html.match(/<title>([^<]+)<\/title>/)[1];
+  if (!title) title = '快手视频';
+  const cvm = html.match(/"coverUrl"\s*:\s*"([^"]+)"/);
+  if (cvm) thumbnail = cvm[1].replace(/\\u002F/g,'/').replace(/\\\//g,'/');
+  if (!videoUrl) return { success: false, error: '无法提取快手视频' };
+  return { success: true, platform: '快手', type: 'video', title, videoUrl, thumbnail, watermark: '无水印', resolution: '高清' };
+}
+
+// ===== B站提取 =====
+async function extractBilibili(link) {
+  const url = extractUrl(link);
+  let bvid = null;
+  if (url.match(/BV([a-zA-Z0-9]+)/)) { bvid = url.match(/BV([a-zA-Z0-9]+)/)[0]; }
+  else if (url.includes('b23.tv')) {
+    const { url: finalUrl } = await corsFetchWithRedirect(url);
+    if (finalUrl.match(/BV([a-zA-Z0-9]+)/)) bvid = finalUrl.match(/BV([a-zA-Z0-9]+)/)[0];
+  } else if (url.match(/av(\d+)/)) {
+    const avid = url.match(/av(\d+)/)[1];
+    const vd = await corsFetchJson('https://api.bilibili.com/x/web-interface/view?aid=' + avid);
+    if (vd.code === 0) bvid = vd.data.bvid;
+  }
+  if (!bvid) return { success: false, error: '无法提取B站视频ID' };
+  const viewData = await corsFetchJson('https://api.bilibili.com/x/web-interface/view?bvid=' + bvid);
+  if (viewData.code !== 0) return { success: false, error: 'B站API错误: ' + viewData.message };
+  const videoData = viewData.data;
+  const cid = videoData.cid;
+  const playData = await corsFetchJson('https://api.bilibili.com/x/player/playurl?bvid=' + bvid + '&cid=' + cid + '&qn=80&fnval=1&fourk=1');
+  if (playData.code !== 0) return { success: false, error: '获取播放地址失败' };
+  let videoUrl = null, resolution = '高清';
+  if (playData.data.durl && playData.data.durl.length > 0) {
+    videoUrl = playData.data.durl[0].url;
+    const q = playData.data.quality;
+    if (q === 80) resolution = '1080P'; else if (q === 64) resolution = '720P'; else if (q === 32) resolution = '480P';
+  }
+  if (!videoUrl && playData.data.dash && playData.data.dash.video) {
+    const v = playData.data.dash.video;
+    if (v.length > 0) videoUrl = v[0].baseUrl || v[0].base_url;
+  }
+  if (!videoUrl) return { success: false, error: '无法获取视频下载地址' };
+  return { success: true, platform: '哔哩哔哩', type: 'video', title: videoData.title, author: (videoData.owner&&videoData.owner.name)||'', videoUrl, thumbnail: videoData.pic, duration: videoData.duration, durationStr: formatDuration(videoData.duration), watermark: '无水印', resolution };
+}
+
+// ===== 小红书提取 =====
+async function extractXiaohongshu(link) {
+  const url = extractUrl(link);
+  let finalUrl = url;
+  if (url && url.includes('xhslink.com')) {
+    const { url: redirected } = await corsFetchWithRedirect(url);
+    finalUrl = redirected;
+  }
+  let noteId = null, xsecToken = null;
+  const tm = finalUrl.match(/xsec_token=([^&]+)/);
+  if (tm) xsecToken = tm[1];
+  const m1 = finalUrl.match(/\/explore\/([a-zA-Z0-9]+)/); if (m1) noteId = m1[1];
+  if (!noteId) { const m2 = finalUrl.match(/\/discovery\/item\/([a-zA-Z0-9]+)/); if (m2) noteId = m2[1]; }
+  if (!noteId) { const m3 = finalUrl.match(/\/note\/([a-zA-Z0-9]+)/); if (m3) noteId = m3[1]; }
+  if (!noteId) { const m4 = finalUrl.match(/\/([a-f0-9]{24})/); if (m4) noteId = m4[1]; }
+  if (!noteId) return { success: false, error: '无法提取小红书笔记ID' };
+  let noteUrl = 'https://www.xiaohongshu.com/explore/' + noteId;
+  if (xsecToken) noteUrl += '?xsec_token=' + xsecToken + '&xsec_source=pc_feed';
+  const html = await corsFetchText(noteUrl);
+  const sm = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\})\s*<\/script>/);
+  if (!sm) {
+    let ogImage=null, ogVideo=null, ogTitle=null;
+    const im = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/); if (im) ogImage = im[1];
+    const vm = html.match(/<meta[^>]+property="og:video"[^>]+content="([^"]+)"/); if (vm) ogVideo = vm[1];
+    const tm2 = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/); if (tm2) ogTitle = tm2[1];
+    if (ogImage || ogVideo) {
+      const r = { success: true, platform: '小红书', title: ogTitle || '小红书笔记', watermark: '无水印' };
+      if (ogVideo) { r.type='video'; r.videoUrl=ogVideo; r.thumbnail=ogImage; } else { r.type='images'; r.images=[ogImage]; }
+      return r;
+    }
+    return { success: false, error: '无法解析小红书页面数据' };
+  }
+  let stateData;
+  try { stateData = JSON.parse(sm[1].replace(/;\s*$/,'').replace(/undefined/g,'null')); } catch (e) { return { success: false, error: '解析数据失败' }; }
+  const nd = stateData.note && stateData.note.noteDetailMap && stateData.note.noteDetailMap[noteId];
+  if (!nd || !nd.note) return { success: false, error: '未找到笔记数据' };
+  const note = nd.note;
+  const result = { success: true, platform: '小红书', title: note.title || note.desc || '小红书笔记', author: (note.user&&note.user.nickname)||'', watermark: '无水印' };
+  if (note.type === 'video' && note.video) {
+    result.type = 'video';
+    if (note.video.media && note.video.media.stream && note.video.media.stream.h264) {
+      const h264 = note.video.media.stream.h264;
+      if (h264.length > 0) result.videoUrl = h264[0].masterUrl || (h264[0].backupUrls && h264[0].backupUrls[0]);
+    }
+    if (!result.videoUrl && note.video.consumer && note.video.consumer.originVideoKey) result.videoUrl = 'https://sns-video-bd.xhscdn.com/' + note.video.consumer.originVideoKey;
+    if (note.video.image && note.video.image.firstFrame) result.thumbnail = note.video.image.firstFrame;
+  }
+  if (note.imageList && note.imageList.length > 0) {
+    result.type = 'images';
+    result.images = note.imageList.map(img => img.urlDefault || img.urlPre || (img.infoList&&img.infoList.length>0?img.infoList[0].url:null)).filter(Boolean);
+  }
+  if (!result.videoUrl && !result.images) return { success: false, error: '无法提取媒体内容' };
+  return result;
+}
+
+// ===== 主逻辑 =====
+let history = [];
+const input = document.getElementById('linkInput');
+input.addEventListener('input', () => { input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,100)+'px'; });
+input.addEventListener('paste', () => { setTimeout(() => { doExtract(); }, 100); });
+
+async function doExtract() {
+  const link = input.value.trim();
+  if (!link) return;
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('error').classList.remove('show');
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('loadingText').textContent = '正在解析...';
+  try {
+    const url = extractUrl(link);
+    if (!url) throw new Error('无法识别链接');
+    const platform = detectPlatform(url);
+    let data;
+    if (platform === 'douyin') { document.getElementById('loadingText').textContent='正在解析抖音...'; data = await extractDouyin(link); }
+    else if (platform === 'kuaishou') { document.getElementById('loadingText').textContent='正在解析快手...'; data = await extractKuaishou(link); }
+    else if (platform === 'bilibili') { document.getElementById('loadingText').textContent='正在解析B站...'; data = await extractBilibili(link); }
+    else if (platform === 'xiaohongshu') { document.getElementById('loadingText').textContent='正在解析小红书...'; data = await extractXiaohongshu(link); }
+    else throw new Error('不支持的平台，请发送抖音/快手/B站/小红书链接');
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('extractBtn').disabled = false;
+    if (data.success) { showResult(data); addHistory(data); }
+    else showError(data.error || '提取失败');
+  } catch (e) {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('extractBtn').disabled = false;
+    showError('错误: ' + e.message);
+  }
+}
+
+function platColor(p) {
+  if (p.includes('抖音')) return '#fe2c55';
+  if (p.includes('快手')) return '#ff7a00';
+  if (p.includes('哔')) return '#00a1d6';
+  if (p.includes('小红书')) return '#ff2442';
+  return '#0a84ff';
+}
+
+function showResult(data) {
+  const result = document.getElementById('result');
+  let html = '<div class="result-card">';
+  if (data.type === 'video' && data.videoUrl) {
+    const pUrl = mediaProxy(data.videoUrl);
+    html += '<div class="result-thumb" id="thumbArea">';
+    if (data.thumbnail) html += '<img src="' + mediaProxy(data.thumbnail) + '" onerror="this.style.display=\'none\'">';
+    html += '<div class="play-icon" onclick="playVideo(\'' + pUrl.replace(/'/g,"\\'") + '\')"></div>';
+    html += '<div class="plat-badge" style="background:' + platColor(data.platform) + '">' + data.platform + '</div>';
+    if (data.durationStr) html += '<div class="dur">' + data.durationStr + '</div>';
+    html += '</div>';
+    html += '<div class="video-player" id="videoPlayer" style="display:none"><video controls autoplay playsinline style="width:100%;border-radius:0;background:#000"></video></div>';
+  } else if (data.type === 'images' && data.images) {
+    html += '<div class="result-thumb"><img src="' + mediaProxy(data.images[0]) + '" onerror="this.style.display=\'none\'"><div class="plat-badge" style="background:' + platColor(data.platform) + '">' + data.platform + '</div><div class="dur">' + data.images.length + '张</div></div>';
+  } else {
+    html += '<div class="result-thumb"><div class="plat-badge" style="background:' + platColor(data.platform) + '">' + data.platform + '</div></div>';
+  }
+  html += '<div class="result-body">';
+  html += '<div class="result-title">' + (data.title || '未知标题') + '</div>';
+  html += '<div class="result-meta">';
+  if (data.author) html += '<span>👤 ' + data.author + '</span>';
+  if (data.resolution) html += '<span>📺 ' + data.resolution + '</span>';
+  if (data.watermark) html += '<span>✓ ' + data.watermark + '</span>';
+  html += '</div>';
+  if (data.type === 'video' && data.videoUrl) {
+    html += '<div class="result-actions">';
+    html += '<a class="btn btn-primary" href="' + mediaProxy(data.videoUrl) + '" download="' + (data.title||'video').substring(0,20) + '.mp4">下载视频</a>';
+    html += '<button class="btn btn-secondary" onclick="copyUrl(\'' + data.videoUrl.replace(/'/g,"\\'") + '\')">复制链接</button>';
+    html += '</div>';
+  } else if (data.type === 'images' && data.images) {
+    html += '<div class="result-actions">';
+    data.images.forEach((img, i) => { if (i < 6) html += '<a class="btn btn-secondary" style="flex:0 0 auto;padding:10px 14px" href="' + mediaProxy(img) + '" download="img_' + (i+1) + '.jpg">' + (i+1) + '</a>'; });
+    html += '</div>';
+  }
+  html += '</div></div>';
+  result.innerHTML = html;
+  result.classList.add('show');
+}
+
+function playVideo(url) {
+  const player = document.getElementById('videoPlayer');
+  const thumb = document.getElementById('thumbArea');
+  if (player && thumb) {
+    thumb.style.display = 'none';
+    player.style.display = 'block';
+    const v = player.querySelector('video');
+    v.src = url; v.load(); v.play().catch(()=>{});
+  }
+}
+function showError(msg) { document.getElementById('errorMsg').textContent = msg; document.getElementById('error').classList.add('show'); }
+function copyUrl(url) {
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(()=>alert('链接已复制'));
+  else { const t=document.createElement('textarea'); t.value=url; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); alert('链接已复制'); }
+}
+function addHistory(data) {
+  history.unshift({ title:data.title, platform:data.platform, thumbnail:data.thumbnail||(data.images&&data.images[0]), type:data.type, videoUrl:data.videoUrl, images:data.images });
+  if (history.length > 5) history.pop();
+  renderHistory();
+}
+function renderHistory() {
+  if (history.length === 0) return;
+  const el = document.getElementById('history');
+  const list = document.getElementById('historyList');
+  el.style.display = 'block';
+  list.innerHTML = history.map(h => '<div class="history-item" onclick=\'showResult(' + JSON.stringify(h).replace(/'/g,"&#39;") + ')\'>' + (h.thumbnail ? '<img class="history-thumb" src="' + mediaProxy(h.thumbnail) + '" onerror="this.style.display=\'none\'">' : '<div class="history-thumb"></div>') + '<div class="history-info"><div class="t">' + h.title + '</div><div class="p">' + h.platform + '</div></div></div>').join('');
+}
+</script>
+</body>
+</html>
